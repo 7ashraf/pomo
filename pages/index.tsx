@@ -1,40 +1,99 @@
-import Head from 'next/head';
-import { links } from '../data/links';
-
+import Navigation from "../components/Navigation";
+import Timer from "../components/Timer";
+import React, { useEffect, useRef, useState } from "react";
+import { WithPageAuthRequired, withPageAuthRequired } from "@auth0/nextjs-auth0";
+import Tasks from '../components/Tasks'
 export default function Home() {
-  return (
-    <div>
-      <Head>
-        <title>Awesome Links</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+	const [pomodoro, setPomodoro] = useState(25);
+	const [shortBreak, setShortBreak] = useState(5);
+	const [longBreak, setLongBreak] = useState(10);
+	const [stage, setStage] = useState(0);
+	const [seconds, setSecond] = useState(0);
+	const [consumedSecond, setConsumedSecond] = useState(0);
+	const [ticking, setTicking] = useState(false);
 
-      <div className="container mx-auto max-w-5xl my-20">
-        <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {links.map((link) => (
-            <li key={link.id} className="shadow  max-w-md  rounded">
-              <img className="shadow-sm" src={link.imageUrl} />
-              <div className="p-5 flex flex-col space-y-2">
-                <p className="text-sm text-blue-500">{link.category}</p>
-                <p className="text-lg font-medium">{link.title}</p>
-                <p className="text-gray-600">{link.description}</p>
-                <a href={link.url} className="flex hover:text-blue-500">
-                  {link.url.replace(/(^\w+:|^)\/\//, '')}
-                  <svg
-                    className="w-4 h-4 my-1"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path>
-                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path>
-                  </svg>
-                </a>
-              </div>
-            </li>
-          ))}
-        </ul>
+
+
+  const switchStage = (index) => {
+	const isYes =
+		consumedSecond && stage !== index
+			? confirm("Are you sure you want to switch?")
+			: false;
+	if (isYes) {
+		reset();
+		setStage(index);
+	} else if (!consumedSecond) {
+		setStage(index);
+	}
+};
+
+  const getTickingTime = () => {
+		const timeStage = {
+			0: pomodoro,
+			1: shortBreak,
+			2: longBreak,
+		};
+		return timeStage[stage];
+	};
+
+  const updateMinute = () => {
+		const updateStage = {
+			0: setPomodoro,
+			1: setShortBreak,
+			2: setLongBreak,
+		};
+		return updateStage[stage];
+	};
+	const timeUp = ()=>{
+		reset();
+		//add tomatoe to user
+	}
+	const reset = () => {
+		setConsumedSecond(0);
+		setTicking(false);
+		setSecond(0);
+	};
+  const clockTicking = () => {
+		const minutes = getTickingTime();
+		const setMinutes = updateMinute();
+
+		if (minutes === 0 && seconds === 0) {
+			timeUp();
+		} else if (seconds === 0) {
+			setMinutes((minute) => minute - 1);
+			setSecond(59);
+		} else {
+			setSecond((second) => second - 1);
+		}
+	};
+  useEffect(() => {
+		
+
+		const timer = setInterval(() => {
+			if(ticking){
+				setConsumedSecond((value) => value + 1);
+
+			clockTicking()
+			}
+		}, 1000);
+
+		return () => {
+			clearInterval(timer);
+		};
+	}, [seconds, pomodoro, shortBreak, longBreak, ticking]);
+  return (
+    <div className='bg-gray-900 min-h-screen font-inter'>
+      <div className='max-w-2xl min-h-screen mx-auto'>
+        <Navigation></Navigation>
+        <Timer
+         stage = {stage} switchStage = {switchStage} getTickingTime = {getTickingTime}
+         seconds = {seconds}
+		 ticking={ticking}
+		 setTicking={setTicking}
+         ></Timer>
+		 <Tasks></Tasks>
       </div>
     </div>
   );
 }
+export const getServerSideProps = withPageAuthRequired()
